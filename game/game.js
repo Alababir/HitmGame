@@ -2,14 +2,17 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
 let circles = [];
-let score = 0; // A pontuação será incrementada de 1 em 1
+let score = 0; // Pontuação inicial
 let gameInterval;
 let nextCircleTime = 0;
 let currentMultiplication;
 let totalPointsNeeded;
+let currentAnswer = '';
+let isAnswerCorrect = false;
 
 const circleRadius = 30;
 const speed = 5;
+const hitZoneY = canvas.height - 70; // Linha de acerto
 
 // Carregando o som
 const sound = new Audio('https://www.soundjay.com/button/beep-07.wav'); // Link para o som
@@ -38,10 +41,9 @@ function updateGame() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   // Desenha a linha de acerto
-  const hitLineY = canvas.height - 70;
   ctx.beginPath();
-  ctx.moveTo(0, hitLineY);
-  ctx.lineTo(canvas.width, hitLineY);
+  ctx.moveTo(0, hitZoneY);
+  ctx.lineTo(canvas.width, hitZoneY);
   ctx.strokeStyle = 'white';
   ctx.lineWidth = 20;
   ctx.stroke();
@@ -52,7 +54,6 @@ function updateGame() {
 
     if (circle.y > canvas.height) {
       circles.splice(index, 1); // Remove o círculo se ultrapassar a tela
-      score -= 1; // Penalidade se o jogador não acertar
     }
 
     ctx.beginPath();
@@ -68,7 +69,11 @@ function updateGame() {
 
   // Desenha a pergunta de multiplicação
   ctx.font = '25px Arial';
-  ctx.fillText(`${currentMultiplication[0]} × ${currentMultiplication[1]} = ?`, canvas.width / 2 - 100, 50);
+  ctx.fillText(`Qual é ${currentMultiplication[0]} × ${currentMultiplication[1]} ?`, canvas.width / 2 - 130, 50);
+
+  // Desenha a resposta digitada pelo jogador
+  ctx.font = '20px Arial';
+  ctx.fillText('Sua resposta: ' + currentAnswer, canvas.width / 2 - 100, 100);
 
   // Geração de novos círculos a cada 2 segundos
   const currentTime = Date.now();
@@ -79,35 +84,34 @@ function updateGame() {
 
   // Verifica se o jogador atingiu o número correto de pontos
   if (score >= totalPointsNeeded) {
-    alert("Parabéns! Você acertou o número correto de pontos!");
     startNewRound(); // Começa uma nova rodada com outra pergunta de multiplicação
   }
 }
 
-// Função de verificação quando a tecla é pressionada
+// Função de verificação quando a tecla Enter é pressionada
 function keyPressHandler(event) {
-  const key = event.key.toLowerCase();
-  
-  // Definindo a linha de acerto
-  const hitZoneTop = canvas.height - 90;
-  const hitZoneBottom = canvas.height - 50;
-
-  // Mapeando as teclas para as linhas corretas
-  const keyMapping = {
-    'a': 0,  // Tecla 'a' para o primeiro círculo (linha 0)
-    's': 1,  // Tecla 's' para o segundo círculo (linha 1)
-    'k': 2,  // Tecla 'k' para o terceiro círculo (linha 2)
-    'l': 3   // Tecla 'l' para o quarto círculo (linha 3)
-  };
-
-  // Verifica se a tecla pressionada corresponde ao círculo correto
-  circles.forEach((circle, index) => {
-    if (keyMapping[key] === circle.lineIndex && circle.y > hitZoneTop && circle.y < hitZoneBottom) {
-      score += 1;  // Incrementa 1 ponto a cada acerto
-      circles.splice(index, 1);  // Remove o círculo se acertado
-      sound.play();  // Toca o som ao acertar
+  if (event.key === 'Enter') {
+    // Verifica se a resposta do jogador está correta
+    if (parseInt(currentAnswer) === currentMultiplication[0] * currentMultiplication[1]) {
+      score += 1; // Incrementa 1 ponto para resposta correta
+      sound.play(); // Toca o som de acerto
+      
+    } else {
+      score -= 1; // Penalidade de 1 ponto para resposta errada
+     
     }
-  });
+
+    // Reseta a resposta para o próximo ciclo
+    currentAnswer = '';
+    startNewRound(); // Gera uma nova pergunta, seja certa ou errada
+  }
+}
+
+// Função para capturar a digitação da resposta
+function handleKeyPress(event) {
+  if (event.key >= '0' && event.key <= '9') {
+    currentAnswer += event.key; // Concatena o número digitado
+  }
 }
 
 // Função para começar uma nova rodada com uma nova pergunta de multiplicação
@@ -116,16 +120,16 @@ function startNewRound() {
   currentMultiplication = [Math.floor(Math.random() * 9) + 1, Math.floor(Math.random() * 9) + 1];  // Nova pergunta de multiplicação
   totalPointsNeeded = currentMultiplication[0] * currentMultiplication[1];  // Define o número de pontos necessários
 
-  // Resetando a pontuação para começar a próxima rodada
-  score = 0;
-  circles = []; // Limpa os círculos da tela
+  // Limpa os círculos da tela
+  circles = [];
 }
 
 // Inicializa o jogo
 function startGame() {
   startNewRound();  // Inicia a primeira rodada
   gameInterval = setInterval(updateGame, 1000 / 60); // Atualiza o jogo a 60 FPS
-  document.addEventListener('keydown', keyPressHandler); // Detecta pressionamento de tecla
+  document.addEventListener('keydown', handleKeyPress); // Detecta a digitação da resposta
+  document.addEventListener('keydown', keyPressHandler);  // Verifica a resposta com Enter
 }
 
 startGame();
